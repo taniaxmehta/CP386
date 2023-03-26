@@ -19,10 +19,11 @@ int main(int argc, char *argv[]) {
     char filename = "sample_in_banker.txt";
     char buff[1000];
     char line[100];
-    char *holder[1000];
+    char *holder[1000] = {NULL};
     char *command;
     char * p;
     int customerno;
+    int len = 0;
     //int available[] = {atoi(argv[1]),atoi(argv[2]),atoi(argv[3]),atoi(argv[4])};
     int available[] = {10,5,7,8};
     FILE *fp;
@@ -72,27 +73,25 @@ int main(int argc, char *argv[]) {
     printf("Maximum resources from file:\n");
     printmaximum(rows,cols,maximum);
     printf("Enter command: ");
-    scanf("%s %d %d %d %d %d", &command,&customerno,&resources[0],&resources[1],&resources[2],&resources[3]);
-    /*    fgets(line,100,stdin);
-        p = strtok(line," ");
+    //scanf("%s %d %d %d %d %d", &command,&customerno,&resources[0],&resources[1],&resources[2],&resources[3]);
+    fgets(line,100,stdin);
+    p = strtok(line," ");
+    int i = 0;
     while (p != NULL) {
-        int i = 0;
         holder[i++] = p;
         p = strtok(NULL," ");
-        p++;
-    }
-    for (int i = 0; i < 6; i++) {
-        printf(holder[i]);
     }
     command = holder[0];
-    customerno = atoi(holder[1]);
-    resources[0] = atoi(holder[2]);
-    resources[1] = atoi(holder[3]);
-    resources[2] = atoi(holder[4]);
-    resources[3] = atoi(holder[5]);
-    */
+    trimTrailing(command); 
+    if (strcmp(command,"RQ") == 0 || strcmp(command,"RL") == 0) {
+        customerno = atoi(holder[1]);
+        resources[0] = atoi(holder[2]);
+        resources[1] = atoi(holder[3]);
+        resources[2] = atoi(holder[4]);
+        resources[3] = atoi(holder[5]);
+    }
     while (strcmp(command,"Exit") != 0) {
-        
+        command = holder[0];
         if (strcmp(command,"RQ") == 0) {
             //request resources
             //fill up certain row with resources requested
@@ -100,7 +99,7 @@ int main(int argc, char *argv[]) {
                 allocated[customerno][i] = resources[i];
             }
             //calculate need matrix
-            for (int i = 0; i < cols; i++) {
+            for (int i = 0; i < rows; i++) {
                 for (int j = 0; j < cols; j++) {
                     need[i][j] = maximum[i][j] - allocated[i][j];
                 }
@@ -119,6 +118,11 @@ int main(int argc, char *argv[]) {
             //release resources
             for (int i = 0; i < cols; i++) {
                 allocated[customerno][i] = allocated[customerno][i] - resources[i];
+            }
+            for (int i = 0; i < rows; i++) {
+                for (int j = 0; j < cols; j++) {
+                    need[i][j] = maximum[i][j] - allocated[i][j];
+                }
             }
         }
         else if (strcmp(command, "Status") == 0) {
@@ -154,30 +158,36 @@ int main(int argc, char *argv[]) {
         }
         else if (strcmp(command, "Run") == 0) {
             //execute customers as threads
+            printf("Safe Sequence is: ");
+            for (int i = 0; i < rows; i++) {
+                printf("%d ",safesequence[i]+1);
+            }
         }
         else if (strcmp(command, "Exit") == 0) {
             exit(0);
         }
         else {
-            printf("Invalid input, use one of RQ, RL, Status, Run, Exit");
+            printf("Invalid input, use one of RQ, RL, Status, Run, Exit\n");
             
         }
         printf("Enter command: ");
-        scanf("%s %d %d %d %d %d", &command,&customerno,&resources[0],&resources[1],&resources[2],&resources[3]);
-        /*
+        //scanf("%s %d %d %d %d %d", &command,&customerno,&resources[0],&resources[1],&resources[2],&resources[3]);
         fgets(line,100,stdin);
         p = strtok(line," ");
+        int i = 0;
         while (p != NULL) {
-            int i = 0;
             holder[i++] = p;
             p = strtok(NULL," ");
         }
         command = holder[0];
-        customerno = holder[1];
-        resources[0] = holder[2];
-        resources[1] = holder[3];
-        resources[2] = holder[4];
-        resources[3] = holder[5];*/
+        trimTrailing(command);
+        if (strcmp(command,"RQ") == 0 || strcmp(command,"RL") == 0) {
+            customerno = atoi(holder[1]);
+            resources[0] = atoi(holder[2]);
+            resources[1] = atoi(holder[3]);
+            resources[2] = atoi(holder[4]);
+            resources[3] = atoi(holder[5]);
+        }
     }
 }
 
@@ -204,7 +214,7 @@ bool safealg() {
         bool safe = false;
         for (int i = 0; i < cols; i++) {
             //if process is not finished then it might be safe
-            if (finished[i] == false) {
+            if (!finished[i]) {
                 bool possible = true;
                 for (int j = 0; j < cols; j++) {
                     //if amount of resources needed greater than present resources
@@ -215,7 +225,7 @@ bool safealg() {
                     }
                 }
                 //if all needs are less than present resources
-                if (possible == true) {
+                if (possible) {
                     for (int j = 0; j < cols; j++) {
                         temp[j] += allocated[i][j];
                     }
@@ -226,12 +236,32 @@ bool safealg() {
                 }
             }
         }
-        if (safe == false) {
-            for (int j = 0; j < cols; j++) {
+        if (!safe) {
+            for (int j = 0; j < rows; j++) {
                 safesequence[j] = -1;
             }
             return false; //no safe sequence of tasks is found
         }
     }
     return true; //safe sequence of tasks is found
+}
+void trimTrailing(char * str)
+{
+    int index, i;
+
+    /* Set default index */
+    index = -1;
+    /* Find last index of non-white space character */
+    i = 0;
+    while(str[i] != '\0')
+    {
+        if(str[i] != ' ' && str[i] != '\t' && str[i] != '\n')
+        {
+            index= i;
+        }
+
+        i++;
+    }
+    /* Mark next character to last non-white space character as NULL */
+    str[index + 1] = '\0';
 }
