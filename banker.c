@@ -12,6 +12,7 @@ int *safesequence;
 int *resources;
 int **need;
 int **allocated;
+int *available;
 //safety algorithm for RQ command
 bool safealg();
 
@@ -105,13 +106,12 @@ int main(int argc, char *argv[]) {
                 }
             }
             for (int i = 0; i < cols; i++) {
+                available[i] = available[i] - resources[i];
+            }
+            for (int i = 0; i < cols; i++) {
                 safesequence[i] = -1;
             }
-            if (!safealg()) {
-                printf("State is unsafe, and request is denied\n");
-                exit(-1);
-            }
-            printf("State is safe, and request is satisfied\n");
+            safealg();
 
         }
         else if (strcmp(command,"RL") == 0) {
@@ -201,49 +201,46 @@ void printmaximum(int rows,int cols,int maximum[rows][cols]) {
 }
 
 bool safealg() {
-    int temp[cols];
-    for (int i = 0; i < cols; i++) {
-        temp[i] = resources[i];
+    int i,j,k=0,flag;
+    int finish[10],safesequence[rows];
+    for (i = 0; i < rows; i++) {
+        finish[i] = 0;
     }
-    bool finished[rows];
-    for (int i = 0; i < rows; i++) {
-        finished[i] = false;
-    }
-    int nfinished = 0;
-    while (nfinished < cols) {
-        bool safe = false;
-        for (int i = 0; i < cols; i++) {
-            //if process is not finished then it might be safe
-            if (!finished[i]) {
-                bool possible = true;
-                for (int j = 0; j < cols; j++) {
-                    //if amount of resources needed greater than present resources
-                    //then it being safe is not possible
-                    if (need[i][j] > temp[j]) {
-                        possible = false;
-                        break;
-                    }
-                }
-                //if all needs are less than present resources
-                if (possible) {
-                    for (int j = 0; j < cols; j++) {
-                        temp[j] += allocated[i][j];
-                    }
-                    safesequence[nfinished] = i;
-                    finished[i] = true;
-                    ++nfinished;
-                    safe = true;
+    for (i = 0; i < rows; i++) {
+        flag = 0;
+        if (finish[i] == 0) {
+            for (j = 0; j < cols; j++) {
+                if (need[i][j] > available[j]) {
+                    flag = 1;
+                    break;
                 }
             }
-        }
-        if (!safe) {
-            for (int j = 0; j < rows; j++) {
-                safesequence[j] = -1;
+            if (flag == 0) {
+                finish[i] = 1;
+                safesequence[k] = i;
+                k++;
+                for (j = 0; j < cols; j++) {
+                    available[j] += allocated[i][j];
+                }
+                i =- 1;
             }
-            return false; //no safe sequence of tasks is found
         }
     }
-    return true; //safe sequence of tasks is found
+    flag = 0;
+    for (i = 0; i < rows; i++) {
+        if (finish[i] == 0) {
+            printf("State is unsafe, and request is denied\n");
+            flag = 1;
+            break;
+        }
+    }
+    if (flag == 0) {
+        printf("State is safe, and request is satisfied\n");
+        for (i = 0; i < rows; i++) {
+            printf("%d",safesequence[i]);
+        }
+    }
+    
 }
 void trimTrailing(char * str)
 {
