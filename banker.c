@@ -132,6 +132,7 @@ int main(int argc, char *argv[])
             // release resources
             for (int i = 0; i < cols; i++)
             {
+                available[i] = available[i] + allocated[customerno][i];
                 allocated[customerno][i] = allocated[customerno][i] - resources[i];
             }
             for (int i = 0; i < rows; i++)
@@ -189,7 +190,7 @@ int main(int argc, char *argv[])
             // {
             //     printf("%d ", safesequence[i] + 1);
             // }
-            run();
+            run(allocated,need,available,maximum);
         }
         else if (strcmp(command, "Exit") == 0)
         {
@@ -308,7 +309,7 @@ void trimTrailing(char *str)
     str[index + 1] = '\0';
 }
 
-void run()
+void run(int allocated[rows][cols],int need[rows][cols],int available[cols], int maximum[rows][cols])
 {
 
     int safe = issafe();
@@ -321,8 +322,9 @@ void run()
 
             printf("\n");
             printf("\n");
-            printf("--> Customer/Thread %d\n", i);
-            printf("--> Customer/Thread %d\n", i);
+            printf("-->     Customer/Thread %d\n", i+1);
+            //fflush(stdout);
+            //printf("--> Customer/Thread %d\n", i);
             printf("        Allocated resources:    %d %d %d %d\n", allocated[i][0], allocated[i][1], allocated[i][2], allocated[i][3]);
             printf("        Needed:    %d %d %d %d\n", need[i][0], need[i][1], need[i][2], need[i][3]);
             printf("        Available:    %d %d %d %d\n", available[0], available[1], available[2], available[3]);
@@ -336,10 +338,9 @@ void run()
             printf("        New Available:   %d %d %d %d\n", available[0], available[1], available[2], available[3]);
             for (int j = 0; j < 4; j++)
             {
-                need[i][j] = 0;
-                allocated[i][j] = maximum[i][j];
+                //need[i][j] = 0;
+                //allocated[i][j] = maximum[i][j];
             }
-            exit(0);
         }
     }
     else
