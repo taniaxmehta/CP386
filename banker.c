@@ -17,8 +17,9 @@ int *available;
 bool safealg();
 void printmaximum(int rows, int cols, int maximum[rows][cols]);
 void trimTrailing(char *str);
-void run();
-int issafe();
+void *threading(void *param);
+void needs(int max[rows][cols], int alloc[rows][cols], int need[rows][cols]);
+void issafe(int allocated[rows][cols], int need[rows][cols], int available[cols], int seq[rows]);
 int main(int argc, char *argv[])
 {
     // char filename = "sample_in_banker.txt";
@@ -29,8 +30,8 @@ int main(int argc, char *argv[])
     char *p;
     int customerno;
     int len = 0;
-    // int available[] = {atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4])};
-    int available[] = {10, 5, 7, 8};
+    int available[] = {atoi(argv[1]), atoi(argv[2]), atoi(argv[3]), atoi(argv[4])};
+    // int available[] = {10, 5, 7, 8};
     FILE *fp;
     int ch, rows = 1, cols = 1;
 
@@ -184,13 +185,74 @@ int main(int argc, char *argv[])
         }
         else if (strcmp(command, "Run") == 0)
         {
-            // execute customers as threads
-            // printf("Safe Sequence is: ");
-            // for (int i = 0; i < rows; i++)
-            // {
-            //     printf("%d ", safesequence[i] + 1);
-            // }
-            run(allocated,need,available,maximum);
+            int sequence[rows];
+            int copied[cols];
+            int t = 0;
+
+            for (i = 0; i < cols; i++)
+            {
+                copied[i] = available[i];
+            }
+            issafe(allocated, need, available, sequence);
+            // hardcoded to see if threading works
+            sequence[0] = 1;
+            sequence[1] = 3;
+            sequence[2] = 2;
+            sequence[3] = 4;
+            sequence[4] = 0;
+            // safealg();
+
+            printf("Safe Sequence is: ");
+            for (i = 0; i < rows; i++)
+            {
+                printf("%d ", sequence[i]);
+            }
+            printf("\n");
+            for (i = 0; i < rows; i++)
+            {
+                pthread_t tid1;
+
+                printf("--> Customer/Thread %d\n", sequence[i]);
+                printf("\tAllocated resources: ");
+
+                for (t = 0; t < cols; t++)
+                {
+                    printf("%d ", allocated[sequence[i]][t]);
+                }
+                printf("\n");
+
+                printf("\tNeeded: ");
+                for (t = 0; t < cols; t++)
+                {
+                    printf("%d ", need[sequence[i]][t]);
+                }
+                printf("\n");
+
+                printf("\tAvailable: ");
+                for (t = 0; t < cols; t++)
+                {
+                    printf("%d ", copied[t]);
+                }
+                printf("\n");
+
+                pthread_create(&tid1, NULL, threading, NULL);
+                pthread_join(tid1, NULL);
+                printf("\tNew Available: ");
+
+                for (int x = 0; x < cols; x++)
+                {
+                    copied[x] += allocated[sequence[i]][x];
+                    printf("%d ", copied[x]);
+                    allocated[sequence[i]][x] = 0;
+                }
+                printf("\n");
+            }
+            needs(maximum, allocated, need); // every thread should update need
+
+            printf("\nEnter Command: ");
+            fgets(line, 100, stdin);
+            line[strlen(line) - 1] = '\0';
+            continue;
         }
         else if (strcmp(command, "Exit") == 0)
         {
@@ -221,6 +283,15 @@ int main(int argc, char *argv[])
             resources[3] = atoi(holder[5]);
         }
     }
+}
+
+void *threading(void *param)
+{
+
+    printf("\tThread has started\n");
+    printf("\tThread has finished\n");
+    printf("\tThread is releasing resources\n");
+    return NULL;
 }
 
 void printmaximum(int rows, int cols, int maximum[rows][cols])
@@ -309,69 +380,55 @@ void trimTrailing(char *str)
     str[index + 1] = '\0';
 }
 
-void run(int allocated[rows][cols],int need[rows][cols],int available[cols], int maximum[rows][cols])
+void issafe(int allocated[rows][cols], int need[rows][cols], int available[cols], int seq[rows])
 {
+    int j = 0;
+    int f[rows], index = 0;
 
-    int safe = issafe();
-
-    if (safe == 1)
+    for (int k = 0; k < rows; k++)
     {
-        printf("Safe Sequence is: <0 1 2 3 4>");
-        for (int i = 0; i < 5; i++)
-        {
+        f[k] = 0;
+    }
 
-            printf("\n");
-            printf("\n");
-            printf("-->     Customer/Thread %d\n", i+1);
-            //fflush(stdout);
-            //printf("--> Customer/Thread %d\n", i);
-            printf("        Allocated resources:    %d %d %d %d\n", allocated[i][0], allocated[i][1], allocated[i][2], allocated[i][3]);
-            printf("        Needed:    %d %d %d %d\n", need[i][0], need[i][1], need[i][2], need[i][3]);
-            printf("        Available:    %d %d %d %d\n", available[0], available[1], available[2], available[3]);
-            printf("        Thread has started\n");
-            printf("        Thread has finished\n");
-            printf("        Thread is releasing resources\n");
-            for (int j = 0; j < 4; j++)
+    while (index < rows)
+    {
+        for (int i = 0; i < rows; i++)
+        {
+            if (f[i] == 0)
             {
-                available[j] = available[j] + allocated[i][j];
-            }
-            printf("        New Available:   %d %d %d %d\n", available[0], available[1], available[2], available[3]);
-            for (int j = 0; j < 4; j++)
-            {
-                //need[i][j] = 0;
-                //allocated[i][j] = maximum[i][j];
+
+                int flag = 0;
+                for (j = 0; j < cols; j++)
+                {
+                    if (need[i][j] > available[j])
+                    {
+                        flag = 1;
+                        break;
+                    }
+                }
+
+                if (flag == 0)
+                {
+                    seq[index++] = i;
+                    for (int a = 0; a < cols; a++)
+                    {
+                        available[a] += allocated[i][a];
+                    }
+                    f[i] = 1;
+                }
             }
         }
-    }
-    else
-    {
-        printf("Not safe\n");
     }
 }
-
-int issafe()
+void needs(int maximum[rows][cols], int allocated[rows][cols], int need[rows][cols])
 {
 
-    int i, j = 0;
-    int safe = 1;
-    int num;
-    while (i < rows && safe == 1)
+    for (int t = 0; t < rows; t++)
     {
-        while (j < cols && safe == 1)
+        for (int x = 0; x < cols; x++)
         {
-            num = 0;
-            for (int a = i - 1; a > 0; a--)
-            {
-                num = num + allocated[i - a][j];
-            }
-            if (need[i][j] > (available[j] + num))
-            {
-                safe = 0;
-            }
-            j++;
+            need[t][x] = maximum[t][x] - allocated[t][x];
         }
-        i++;
     }
-
-    return safe;
+    return;
 }
